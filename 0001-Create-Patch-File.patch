@@ -1,0 +1,131 @@
+From 502ca6133af49fe967f7ca313eb4dd8eb5f922bd Mon Sep 17 00:00:00 2001
+From: Diksha Bhardwaj <dikshabh08@gmail.com>
+Date: Sat, 30 Oct 2021 12:17:32 +0530
+Subject: [PATCH] Create Patch File
+
+---
+ .env          |  1 +
+ src/App.tsx   | 23 +++++++++++++++++------
+ src/Graph.tsx | 16 ++++++++++++----
+ 3 files changed, 30 insertions(+), 10 deletions(-)
+ create mode 100644 .env
+
+diff --git a/.env b/.env
+new file mode 100644
+index 0000000..7d910f1
+--- /dev/null
++++ b/.env
+@@ -0,0 +1 @@
++SKIP_PREFLIGHT_CHECK=true
+\ No newline at end of file
+diff --git a/src/App.tsx b/src/App.tsx
+index 0728518..0934890 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -8,6 +8,7 @@ import './App.css';
+  */
+ interface IState {
+   data: ServerRespond[],
++  showGraph: boolean,
+ }
+ 
+ /**
+@@ -22,6 +23,7 @@ class App extends Component<{}, IState> {
+       // data saves the server responds.
+       // We use this state to parse data down to the child element (Graph) as element property
+       data: [],
++      showGraph:false,
+     };
+   }
+ 
+@@ -29,18 +31,27 @@ class App extends Component<{}, IState> {
+    * Render Graph react component with state.data parse as property data
+    */
+   renderGraph() {
++    if(this.state.showGraph){
+     return (<Graph data={this.state.data}/>)
+-  }
++  }}
+ 
+   /**
+    * Get new data from server and update the state with the new data
+    */
+   getDataFromServer() {
+-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
+-      // Update the state by creating a new array of data that consists of
+-      // Previous data in the state and the new data from server
+-      this.setState({ data: [...this.state.data, ...serverResponds] });
+-    });
++    let x = 0;
++    const interval = setInterval(() => {
++     DataStreamer.getData((serverResponds:ServerRespond[]) => {
++      this.setState({
++       data: serverResponds,
++       showGraph: true,
++      });
++     });
++    x++;
++    if (x>1000) {
++   clearInterval(interval);
++    }
++  },100);
+   }
+ 
+   /**
+diff --git a/src/Graph.tsx b/src/Graph.tsx
+index ec1430e..2f8466c 100644
+--- a/src/Graph.tsx
++++ b/src/Graph.tsx
+@@ -1,5 +1,5 @@
+ import React, { Component } from 'react';
+-import { Table } from '@jpmorganchase/perspective';
++import { Table } from '@finos/perspective';
+ import { ServerRespond } from './DataStreamer';
+ import './Graph.css';
+ 
+@@ -14,7 +14,7 @@ interface IProps {
+  * Perspective library adds load to HTMLElement prototype.
+  * This interface acts as a wrapper for Typescript compiler.
+  */
+-interface PerspectiveViewerElement {
++interface PerspectiveViewerElement extends HTMLElement {
+   load: (table: Table) => void,
+ }
+ 
+@@ -31,8 +31,9 @@ class Graph extends Component<IProps, {}> {
+   }
+ 
+   componentDidMount() {
++    console.log('rendering');
+     // Get element to attach the table from the DOM.
+-    const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
++    const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
+ 
+     const schema = {
+       stock: 'string',
+@@ -41,14 +42,21 @@ class Graph extends Component<IProps, {}> {
+       timestamp: 'date',
+     };
+ 
+-    if (window.perspective && window.perspective.worker()) {
++    if (window.perspective) {
+       this.table = window.perspective.worker().table(schema);
+     }
+     if (this.table) {
++      console.log('change table');
+       // Load the `table` in the `<perspective-viewer>` DOM reference.
+ 
+       // Add more Perspective configurations here.
+       elem.load(this.table);
++      elem.setAttribute('view','y_line');
++      elem.setAttribute('column-pivots','["stock"]');
++      elem.setAttribute('row-pivots','["timestamp"]');
++      elem.setAttribute('columns','["top_ask_price"]');
++      elem.setAttribute('aggregates','{"stock":"distinct count","top_Ask_price":"avg","top_bid_price":"avg","timestamp":"distinct count"}');
++
+     }
+   }
+ 
+-- 
+2.30.0.windows.2
+
